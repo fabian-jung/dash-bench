@@ -334,7 +334,7 @@ int main(int argc, char* argv[])
 		for(int elements = 1; elements < 1000000; elements *= 10) {
 			const auto total_runs = 10;
 
-			Bench bench("balance(vector, uneven) " + std::to_string(elements) +" elements")
+			Bench bench("balance(vector, uneven) " + std::to_string(elements) +" elements");
 
 			size_t size;
 			for(int runs = 0; runs < total_runs; runs++) {
@@ -404,7 +404,7 @@ int main(int argc, char* argv[])
 			Bench bench("fill(Array) " + std::to_string(elements) + " elements");
 
 			dash::Array<int> list(elements);
-			for(int runs = 0; runs < total_runs; runs++) {
+			for(int runs = 0; runs < max_runs; runs++) {
 				bench.start();
 				dash::fill(list.begin(), list.end(), 0);
 
