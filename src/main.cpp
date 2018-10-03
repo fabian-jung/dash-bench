@@ -8,6 +8,10 @@
 #include <iostream>
 #include <cstddef>
 #include <chrono>
+#include <vector>
+#include <string>
+#include <cmath>
+#include <algorithm>
 
 #include <libdash.h>
 #include <dash/Algorithm.h>
@@ -57,6 +61,60 @@ auto poly_distribution(double n, double a = 0) {
 
 }
 
+class Bench {
+
+	using clock = std::chrono::high_resolution_clock;
+
+	clock::time_point begin;
+
+	std::vector<clock::duration> durations;
+	std::string msg;
+
+public:
+	Bench(std::string msg) :
+		msg(msg)
+	{};
+
+	~Bench() {
+		if(dash::myid() == 0) {
+		std::sort(durations.begin(), durations.end());
+		double mean = std::chrono::duration_cast<std::chrono::microseconds>(durations.at(durations.size() / 2)).count();
+		double min = std::numeric_limits<double>::max(), max = 0, sum = 0;
+		for(const auto& dur : durations) {
+			const double count = std::chrono::duration_cast<std::chrono::microseconds>(dur).count();
+			sum += count;
+			min = std::min(min, count);
+			max = std::max(max, count);
+		}
+		auto avg = sum / durations.size();
+
+		double stdev = 0;
+		for(const auto& dur : durations) {
+			double count = std::chrono::duration_cast<std::chrono::microseconds>(dur).count() - avg;
+			count *= count;
+			stdev += count;
+		}
+		stdev = std::sqrt(stdev / durations.size());
+
+
+		std::cout << msg << ": "<< durations.size()
+			<< " runs with avg " << avg
+			<< " us, mean " << mean
+			<< " us,  min " << min
+			<< " us, max " << max
+			<< " us, stdev " << stdev << " us" << std::endl;;
+		}
+	}
+	void start() {
+		begin = clock::now();
+	}
+
+	void end() {
+		auto end = clock::now();
+		durations.push_back(end - begin);
+	}
+};
+
 int main(int argc, char* argv[])
 {
 	dash::init(&argc, &argv);
@@ -66,6 +124,7 @@ int main(int argc, char* argv[])
 	std::cout << "Initialized context with " << size << " ranks." << std::endl;
 
 	auto& team = dash::Team::All();
+
 
 	if(myid == 0) {
 		std::cout << "dash::vector lpush_back with enough capacity" << std::endl;
@@ -205,7 +264,7 @@ int main(int argc, char* argv[])
 	}
 
 
-	constexpr size_t max_elements = 1'000'000'000;
+	constexpr size_t max_elements = 100'000'000;
 	constexpr size_t max_runs = 100;
 
 	
@@ -215,24 +274,51 @@ int main(int argc, char* argv[])
 		for(size_t elements = 1; elements < 100000000; elements *= 10) {
 			const auto total_runs = 100;
 
-			std::chrono::microseconds duration(0);
+			std::chrono::microseconds duration(0), duration2(0);
 			for(int runs = 0; runs < total_runs; runs++) {
 				dash::Vector<int> vec;
 				auto begin = std::chrono::high_resolution_clock::now();
 				for(int i = 0; i < elements / team.size(); i++) {
 					vec.push_back(i, dash::vector_strategy_t::CACHE);
 				}
+				auto end2 = std::chrono::high_resolution_clock::now();
 				vec.commit();
 				auto end = std::chrono::high_resolution_clock::now();
 				duration += std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
+				duration2 += std::chrono::duration_cast<std::chrono::microseconds>(end2 - begin);
 			}
 			if(myid == 0) {
-				std::cout << "push_back(cached) elements: " << elements << "; time " << duration.count()/total_runs << " us" << std::endl;
+				std::cout << "push_back(cached) elements: " << elements << "; time " << duration.count()/total_runs << " us ( " << duration2.count()/total_runs << " us )" << std::endl;
 			}
 		}
 	}
 
+        if(myid == 0) std::cout << "timing" << std::endl;
+        {
+                for(size_t elements = 1; elements < 100000000; elements *= 10) {
+                        const auto total_runs = 100;
 
+                        std::chrono::microseconds duration(0), duration2(0);
+                        for(int runs = 0; runs < total_runs; runs++) {
+                                dash::Vector<int> vec;
+                                auto begin = std::chrono::high_resolution_clock::now();
+                                for(int i = 0; i < elements / team.size(); i++) {
+                                        vec.lpush_back(i, dash::vector_strategy_t::CACHE);
+                                }
+                                auto end2 = std::chrono::high_resolution_clock::now();
+                                vec.commit();
+                                auto end = std::chrono::high_resolution_clock::now();
+                                duration += std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
+                                duration2 += std::chrono::duration_cast<std::chrono::microseconds>(end2 - begin);
+                        }
+                        if(myid == 0) {
+                                std::cout << "lpush_back(cached) elements: " << elements << "; time " << duration.count()/total_runs << " us ( " << duration2.count()/total_runs << " us )" << std::endl;
+                        }
+                }
+        }
+
+
+/*
 	if(myid == 0) std::cout << "timing" << std::endl;
 	{
 		for(size_t elements = 1; elements < 1000000; elements *= 10) {
@@ -250,10 +336,11 @@ int main(int argc, char* argv[])
 				duration += std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
 			}
 			if(myid == 0) {
-				std::cout << "push_back(hybrid) elements: " << elements << "; time " << duration.count()/total_runs << "us" << std::endl;
+				std::cout << "push_back(hybrid) elements: " << elements << "; time " << duration.count()/total_runs << "us, (" << duration2.count()/total_runs << "us )" << std::endl;
 			}
 		}
 	}
+*/
 /*
 	if(myid == 0) std::cout << "timing" << std::endl;
 	{
@@ -338,6 +425,7 @@ int main(int argc, char* argv[])
 		}
 	}
 
+
 	if(myid == 0) std::cout << "timing" << std::endl;
 	{
 		for(size_t elements = 1000; elements < max_elements; elements *= 10) {
@@ -360,7 +448,7 @@ int main(int argc, char* argv[])
 		}
 	}
 
-
+/*
 	if(myid == 0) std::cout << "timing" << std::endl;
 	{
 		auto dist = poly_distribution(team.size(), 0.3);
@@ -391,7 +479,7 @@ int main(int argc, char* argv[])
 
 		}
 	}
-	
+*/	
 
 		if(myid == 0) std::cout << "timing" << std::endl;
 	{

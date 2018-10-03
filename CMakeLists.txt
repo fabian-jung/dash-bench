@@ -15,7 +15,7 @@ option(ENABLE_TRACE_LOGGING "Enable Tracing" OFF)
 option(ENABLE_DART_LOGGING "Enable Dart Logging" OFF)
 
 add_executable(dashBench src/main.cpp)
-target_link_libraries(dashBench ${MPI_LIBRARIES} dash-mpi dart-mpi dart-base)
+target_link_libraries(dashBench ${MPI_LIBRARIES} dash-mpi dart-mpi dart-base numa)
 
 if(MPI_COMPILE_FLAGS)
   set_target_properties(dashBench PROPERTIES
