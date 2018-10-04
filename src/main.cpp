@@ -286,21 +286,55 @@ int main(int argc, char* argv[])
 		}
 	}
 
-        if(myid == 0) std::cout << "timing" << std::endl;
-        {
-			for(size_t elements = 1; elements < max_elements; elements *= 10) {
-				Bench bench("lpush_back(cached) " + std::to_string(elements) + " elements:");
-					for(int runs = 0; runs < max_runs; runs++) {
-							dash::Vector<int> vec;
-							bench.start();
-							for(int i = 0; i < elements / team.size(); i++) {
-									vec.lpush_back(i, dash::vector_strategy_t::CACHE);
-							}
-							vec.commit();
-							bench.end();
-					}
+	if(myid == 0) std::cout << "timing" << std::endl;
+	{
+		for(size_t elements = 1; elements < max_elements; elements *= 10) {
+			Bench bench("lpush_back(cached) " + std::to_string(elements) + " elements:");
+				for(int runs = 0; runs < max_runs; runs++) {
+						dash::Vector<int> vec;
+						bench.start();
+						for(int i = 0; i < elements / team.size(); i++) {
+								vec.lpush_back(i, dash::vector_strategy_t::CACHE);
+						}
+						vec.commit();
+						bench.end();
+				}
+		}
+	}
+
+	if(myid == 0) std::cout << "timing" << std::endl;
+	{
+		for(size_t elements = 1; elements < max_elements; elements *= 10) {
+			Bench bench("insert(cached) " + std::to_string(elements) +  " elements");
+
+			for(int runs = 0; runs < max_runs; runs++) {
+				dash::Vector<int> vec;
+				std::vector<int> buf;
+				buf.resize(elements/team.size());
+				bench.start();
+				vec.insert(buf.begin(), buf.end());
+				vec.commit();
+				bench.end();
 			}
-        }
+		}
+	}
+
+	if(myid == 0) std::cout << "timing" << std::endl;
+	{
+		for(size_t elements = 1; elements < max_elements; elements *= 10) {
+			Bench bench("linsert(cached) " + std::to_string(elements) +  " elements");
+
+			for(int runs = 0; runs < max_runs; runs++) {
+				dash::Vector<int> vec;
+				std::vector<int> buf;
+				buf.resize(elements/team.size());
+				bench.start();
+				vec.linsert(buf.begin(), buf.end());
+				vec.commit();
+				bench.end();
+			}
+		}
+	}
 
 
 /*
