@@ -368,13 +368,13 @@ int main(int argc, char* argv[])
 		for(int elements = 1; elements < 1000000; elements *= 10) {
 			const auto total_runs = 10;
 
-			Bench bench("balance(vector, uneven) " + std::to_string(elements) +" elements");
+			Bench bench("balance(vector,uneven) " + std::to_string(elements) +" elements");
 
 			size_t size;
 			for(int runs = 0; runs < total_runs; runs++) {
 
 				dash::Vector<int> list;
-				auto lelem = elements * dist(team.myid());
+				auto lelem = dash::myid() == 0 ? elements : 0;//elements * dist(team.myid());
 				std::vector<int> buff(lelem);
 				list.linsert(buff.begin(), buff.end());
 				list.commit();
@@ -414,16 +414,32 @@ int main(int argc, char* argv[])
 	}
 */
 
+	if(myid == 0) std::cout << "timing" << std::endl;
+        {
+                for(size_t elements = 1; elements < max_elements/100; elements *= 10) {
+                        Bench bench("std::fill(Array)_from_id_0 " + std::to_string(elements) + " elements");
+
+                        dash::Array<int> list(elements);
+                        for(int runs = 0; runs < max_runs/10; runs++) {
+                                bench.start();
+                                if(dash::myid() == 0) std::fill(list.begin(), list.end(), 0);
+
+                                list.barrier();
+                                bench.end();
+                        }
+                }
+        }
+
 
 	if(myid == 0) std::cout << "timing" << std::endl;
 	{
-		for(size_t elements = 1; elements < max_elements; elements *= 10) {
-			Bench bench("fill(vector) " + std::to_string(elements) + " elements");
+		for(size_t elements = 1; elements < max_elements/100; elements *= 10) {
+			Bench bench("std::fill(vector)_from_id_0 " + std::to_string(elements) + " elements");
 			dash::Vector<int> list(elements/team.size());
-			for(int runs = 0; runs < max_runs; runs++) {
+			for(int runs = 0; runs < max_runs/10; runs++) {
 				size = list.size();
 				bench.start();
-				dash::fill(list.begin(), list.end(), 0);
+				if(dash::myid() == 0) std::fill(list.begin(), list.end(), 0);
 
 				list.barrier();
 				bench.end();
@@ -431,22 +447,6 @@ int main(int argc, char* argv[])
 		}
 	}
 
-
-	if(myid == 0) std::cout << "timing" << std::endl;
-	{
-		for(size_t elements = 1; elements < max_elements; elements *= 10) {
-			Bench bench("fill(Array) " + std::to_string(elements) + " elements");
-
-			dash::Array<int> list(elements);
-			for(int runs = 0; runs < max_runs; runs++) {
-				bench.start();
-				dash::fill(list.begin(), list.end(), 0);
-
-				list.barrier();
-				bench.end();
-			}
-		}
-	}
 
 	if(myid == 0) std::cout << "timing" << std::endl;
 	{
@@ -455,10 +455,11 @@ int main(int argc, char* argv[])
 		for(size_t elements = 1; elements < max_elements; elements *= 10) {
 			const auto total_runs = max_runs;
 
-			Bench bench("fill(vector, uneven) " + std::to_string(elements) + " elements");
+			Bench bench("fill(vector,uneven) " + std::to_string(elements) + " elements");
 
 			dash::Vector<int> list;
-			auto lelem = elements * dist(team.myid());
+			auto lelem = dash::myid() == 0 ? elements : 0;//elements * dist(team.myid());
+
 			std::vector<int> buff(lelem);
 			list.linsert(buff.begin(), buff.end());
 			list.commit();
@@ -475,6 +476,23 @@ int main(int argc, char* argv[])
 	}
 
 
+        if(myid == 0) std::cout << "timing" << std::endl;
+        {
+                for(size_t elements = 1; elements < max_elements; elements *= 10) {
+                        Bench bench("std::fill(Array) " + std::to_string(elements) + " elements");
+
+                        dash::Array<int> list(elements);
+                        for(int runs = 0; runs < max_runs; runs++) {
+                                bench.start();
+                                std::fill(list.lbegin(), list.lend(), 0);
+
+                                list.barrier();
+                                bench.end();
+                        }
+                }
+        }
+
+
 	if(myid == 0) std::cout << "timing" << std::endl;
 	{
 		for(size_t elements = 1; elements < max_elements; elements *= 10) {
@@ -482,7 +500,6 @@ int main(int argc, char* argv[])
 
 			dash::Vector<int> list(elements/team.size());
 			for(int runs = 0; runs < max_runs; runs++) {
-				size = list.size();
 				bench.start();
 				std::fill(list.lbegin(), list.lend(), 0);
 
@@ -491,7 +508,7 @@ int main(int argc, char* argv[])
 			}
 		}
 	}
-
+/*
 	if(myid == 0) std::cout << "timing" << std::endl;
 	{
 		for(size_t elements = 1; elements < max_elements; elements *= 10) {
@@ -507,7 +524,7 @@ int main(int argc, char* argv[])
 			}
 		}
 	}
-
+*/
 
 	team.barrier();
 
